@@ -101,9 +101,12 @@ void ReceiveRF() {
           break;
         }
       default: {
-          Serial.print("unknown command:");
-          Serial.println(Pdata[0]);
-          break;
+          if (receiveLen != 0x00) {   receiveLen ==0 means frame is not for me
+            Serial.print("unknown command:");
+            Serial.println(Pdata[0]);
+            break;
+          }
+
         }
     }
   }
