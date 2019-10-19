@@ -77,11 +77,33 @@ void ReceiveRF() {
 
           }
           break;
-        default: {
-            Serial.print("unknown command:");
-            Serial.println(Pdata[0]);
-            break;
+        }
+      case updateRegistersRequest: {
+#if defined(debugOn)
+          Serial.println("updateRegisterRequest");
+
+#endif
+          for (int i = 0; i < floor(receiveLen - firstDataBytePosition ) / 2; i++) {
+            if (Pdata[firstDataBytePosition + 2 * i] >= 0 && Pdata[firstDataBytePosition + 2 * i] < registerSize)
+            {
+              Registers[Pdata[firstDataBytePosition + 2 * i]] = Pdata[firstDataBytePosition + 2 * i + 1];
+#if defined(debugOn)
+              Serial.print("id ");
+              Serial.print(i);
+              Serial.print(" value: 0x");
+              Serial.println(Registers[i], HEX);
+#endif
+            }
           }
+
+          timeSendRegister = millis() - 1000;
+          //    SendRegisters();
+          break;
+        }
+      default: {
+          Serial.print("unknown command:");
+          Serial.println(Pdata[0]);
+          break;
         }
     }
   }

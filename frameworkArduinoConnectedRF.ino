@@ -33,11 +33,11 @@ unsigned long timeSendRegister = 15000;
 unsigned long timeSendDatabase = 20000;
 unsigned long timeTimeRequested = 20000;
 unsigned long lastTimeUpdated ;
-boolean lastUpdateClock = false;
+unsigned long  lastUpdateClock;
 uint8_t value0 = 0;
-#define registerSize 1
+#define registerSize 2
 unsigned long  updateCycle = 5; // in minutes
-uint8_t Registers[registerSize] = {updateCycle};
+uint8_t Registers[registerSize] = {updateCycle,0x00};
 #define updatableIndicatorsNumber 1
 unsigned int updatableIndicatorsIndex[updatableIndicatorsNumber] = {18};
 int updatableIndicatorsValues[updatableIndicatorsNumber] = {0};
