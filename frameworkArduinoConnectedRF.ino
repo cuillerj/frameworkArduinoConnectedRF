@@ -1,7 +1,5 @@
 
 
-
-
 #define Version "RF_frameworkV"
 #define ver 1 // version 
 #define debugOn
@@ -13,10 +11,10 @@
 #define addrEepromGateway 1  // address of gateway address
 #define addrEepromSenderPin 2
 #define addrEepromReveiverPin 3
-uint8_t senderPin = 4;
+uint8_t senderPin = 3;
 uint8_t reveiverPin = 5;
 #define speedLink 2400
-#define nbRetry 3
+#define nbRetry 4
 uint8_t stationAddress = 0x01;
 uint8_t gatewayAddress = 0xfe;
 #define diagTimeUpToDate 2
@@ -27,11 +25,11 @@ uint8_t *Pdata = &data[0]; // pointer to the data zone
 //RF433Link rfLink(stationAddress, gatewayAddress, senderPin, reveiverPin, speedLink,nbRetry);
 RF433Link rfLink(speedLink);
 unsigned long lastStatusSentTime = 0;
-unsigned long lastIndicatorsSentTime = 5000;
-unsigned long lastToSheetSentTime = 10000;
-unsigned long timeSendRegister = 15000;
-unsigned long timeSendDatabase = 20000;
-unsigned long timeTimeRequested = 20000;
+unsigned long lastIndicatorsSentTime = 10000;
+unsigned long lastToSheetSentTime = 20000;
+unsigned long timeSendRegister = 30000;
+unsigned long timeSendDatabase = 40000;
+unsigned long timeTimeRequested = 25000;
 unsigned long lastTimeUpdated ;
 unsigned long  lastUpdateClock;
 uint8_t value0 = 0;
@@ -65,18 +63,20 @@ void setup() {
   Serial.print("start:");
   Serial.print(Version);
   Serial.println(ver);
-  pinMode(configPIN, INPUT);
-  if (digitalRead(configPIN)) {
+  pinMode(configPIN, INPUT_PULLUP);
+  if (!digitalRead(configPIN)) {
     UpdateEeprom();
   }
   stationAddress = EEPROM.read(addrEepromStation);
   gatewayAddress = EEPROM.read(addrEepromGateway);
   senderPin = EEPROM.read(addrEepromSenderPin);
   reveiverPin = EEPROM.read(addrEepromReveiverPin);
-  Serial.print("station:");
-  Serial.print(stationAddress);
-  Serial.print(" gateway:");
-  Serial.println(gatewayAddress);
+  Serial.print("gateway:");
+  Serial.print(gatewayAddress, HEX);
+  Serial.print(" RF_sub address:");
+  Serial.print(stationAddress, HEX);
+  Serial.print(" station:");
+  Serial.println((unsigned int)(gatewayAddress) * 256 + (unsigned int)(stationAddress));
   rfLink.SetParameters(stationAddress, gatewayAddress, senderPin, reveiverPin, nbRetry);
   rfLink.Start();
   randomSeed(analogRead(0));
@@ -125,7 +125,6 @@ void loop() {
     values[0] = value0;
     values[1] = analogRead(A0);
     SendToGoogleSheet(nbValues, values);
-    //    rfLink.SendData(Pdata, 10);
   }
   if (millis() > timeSendDatabase + Registers[0] * 60000) {
     Serial.println("send to database");
@@ -136,14 +135,13 @@ void loop() {
     values[0] = value0;
     values[1] = analogRead(A0);
     SendToDatabase(nbValues, 0, values);
-    //    rfLink.SendData(Pdata, 10);
   }
   if (millis() > timeSendRegister + Registers[0] * 60000) {
     Serial.println("send registers");
     timeSendRegister = millis();
     SendRegisters();
   }
-  if ( bitRead(diagByte, diagTimeUpToDate) && millis() > timeTimeRequested + 20000) {
+  if ( bitRead(diagByte, diagTimeUpToDate) && millis() > timeTimeRequested + 60000) {
     Serial.println("request time");
     timeTimeRequested = millis();
     SendRequestTime();

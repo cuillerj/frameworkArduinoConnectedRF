@@ -10,11 +10,7 @@ void SendToGoogleSheet(uint8_t number, int values[])
     for (int i = 1; i <= *PretByte; i++) {
       data[i + idx] = *(PretByte + i);  //  data tot the frame
     }
-    Serial.print("sh len:");
-    Serial.print(*PretByte);
     idx = idx + *PretByte;
-    Serial.print("-");
-    Serial.println(idx);
   }
   rfLink.SendData(Pdata, idx);
 }
@@ -31,11 +27,7 @@ void SendToDatabase(uint8_t number, uint8_t type, int values[])
     for (int i = 1; i <= *PretByte; i++) {
       data[i + idx] = *(PretByte + i);  //  data to the frame
     }
-    Serial.print("db len:");
-    Serial.print(*PretByte);
     idx = idx + *PretByte;
-    Serial.print("-");
-    Serial.println(idx);
   }
   rfLink.SendData(Pdata, idx);
 }
@@ -43,10 +35,10 @@ void SendRegisters()
 {
   data[0] = 0x00; // reserved for futur usage
   data[1] = registersResponse;
-  uint8_t framLen = 2;
+  uint8_t framLen = 1;
   for (int i = 0; i < registerSize; i++) {
     data[2 + 2 * i] = uint8_t(i);  // register number
-    data[2 + 2 * i] = Registers[i]; // register value
+    data[3 + 2 * i] = Registers[i]; // register value
     framLen = framLen + 2;
     if (framLen > maxDataLen - 2) {       // test not over maximal frem size
       break;

@@ -3,11 +3,16 @@ void ReceiveRF() {
     receivedData rc = rfLink.Receive();
     uint8_t *Pdata = rc.data;
     uint8_t  receiveLen = rc.dataLen;
+    if (receiveLen == 0x00) {      // receiveLen 0 means frame already received or is not for me
+      return;
+    }
+#if defined(debugOn)
     for (int i = 0; i < receiveLen; i++) {
       Serial.print(Pdata[i], HEX);
       Serial.print(".");
     }
     Serial.println();
+#endif
     unsigned indicatorId = Pdata[1] * 256 + Pdata[2];
     int value = Pdata[4] * 256 + Pdata[5];
     if (Pdata[4] == 0x2d) {
@@ -24,8 +29,8 @@ void ReceiveRF() {
             Serial.print(value);
             break;
           }
-          Serial.println();
         }
+        Serial.println();
         break;
       case timeUpdateResponse: {
           /*
@@ -101,11 +106,13 @@ void ReceiveRF() {
           break;
         }
       default: {
-          if (receiveLen != 0x00) {   receiveLen ==0 means frame is not for me
-            Serial.print("unknown command:");
-            Serial.println(Pdata[0]);
-            break;
-          }
+
+#if defined(debugOn)
+          Serial.print("unknown command:");
+          Serial.println(Pdata[0]);
+#endif
+          break;
+
 
         }
     }
