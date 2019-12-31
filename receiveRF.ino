@@ -13,9 +13,12 @@ void ReceiveRF() {
     }
     Serial.println();
 #endif
-    unsigned indicatorId = Pdata[1] * 256 + Pdata[2];
-    int value = Pdata[4] * 256 + Pdata[5];
-    if (Pdata[4] == 0x2d) {
+    // ((packetBuffer[9] << 8)& 0x7ff)+ (int(packetBuffer[10]) & 0x00ff)
+    //    unsigned indicatorId = Pdata[1] * 256 + Pdata[2];
+    int indicatorId = GetValue(Pdata[1], Pdata[2]);
+    //    int value = Pdata[4] * 256 + Pdata[5];
+    int value = GetValue(Pdata[4], Pdata[5]);
+    if (Pdata[3] == 0x2d) {
       value = -value;
     }
     switch (Pdata[0]) {
@@ -31,6 +34,7 @@ void ReceiveRF() {
           }
         }
         Serial.println();
+        lastStatusSentTime = millis() - 2000;
         break;
       case timeUpdateResponse: {
           /*
@@ -101,7 +105,7 @@ void ReceiveRF() {
             }
           }
 
-          timeSendRegister = millis() - 1000;
+          lastIndicatorsSentTime = millis() - 1000;
           //    SendRegisters();
           break;
         }
@@ -117,4 +121,10 @@ void ReceiveRF() {
         }
     }
   }
+}
+int GetValue(byte one, byte two) {
+  return ((one << 8) & 0x7fff) + (int(two) & 0x00ff);
+}
+unsigned int GetUnsignedValue(byte one, byte two) {
+  return ((one << 8) ) + (int(two) & 0x00ff);
 }

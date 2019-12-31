@@ -24,6 +24,6 @@ void UpdateEeprom() {
   EEPROM.update(addrEepromSenderPin, senderPin);
   delay(100);
   EEPROM.update(addrEepromReveiverPin, reveiverPin);
-  Serial.println(" remove configPIN and restart");
+  Serial.println(" remove configPIN or set forceInitEeprom to false and restart");
   delay(60000*60);
 }

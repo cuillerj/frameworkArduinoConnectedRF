@@ -3,6 +3,7 @@
 #define Version "RF_frameworkV"
 #define ver 1 // version 
 #define debugOn
+#define forceInitEeprom false
 #include <HomeAutomationBytesCommands.h> // commands specifications
 
 #include <EEPROM.h>
@@ -13,7 +14,7 @@
 #define addrEepromReveiverPin 3
 uint8_t senderPin = 3;
 uint8_t reveiverPin = 5;
-#define speedLink 2400
+#define speedLink 2000
 #define nbRetry 4
 uint8_t stationAddress = 0x01;
 uint8_t gatewayAddress = 0xfe;
@@ -35,7 +36,7 @@ unsigned long  lastUpdateClock;
 uint8_t value0 = 0;
 #define registerSize 2
 unsigned long  updateCycle = 5; // in minutes
-uint8_t Registers[registerSize] = {updateCycle,0x00};
+uint8_t Registers[registerSize] = {updateCycle, 0x00};
 #define updatableIndicatorsNumber 1
 unsigned int updatableIndicatorsIndex[updatableIndicatorsNumber] = {18};
 int updatableIndicatorsValues[updatableIndicatorsNumber] = {0};
@@ -64,7 +65,7 @@ void setup() {
   Serial.print(Version);
   Serial.println(ver);
   pinMode(configPIN, INPUT_PULLUP);
-  if (!digitalRead(configPIN)) {
+  if (!digitalRead(configPIN)||forceInitEeprom) {
     UpdateEeprom();
   }
   stationAddress = EEPROM.read(addrEepromStation);
@@ -76,7 +77,7 @@ void setup() {
   Serial.print(" RF_sub address:");
   Serial.print(stationAddress, HEX);
   Serial.print(" station:");
-  Serial.println((unsigned int)(gatewayAddress) * 256 + (unsigned int)(stationAddress));
+  Serial.println(GetUnsignedValue(gatewayAddress, stationAddress));
   rfLink.SetParameters(stationAddress, gatewayAddress, senderPin, reveiverPin, nbRetry);
   rfLink.Start();
   randomSeed(analogRead(0));
@@ -92,7 +93,7 @@ void loop() {
   rfLink.RetrySend();
   ReceiveRF();
 
-  if (millis() > lastStatusSentTime +  Registers[0] * 60000) {
+  if (millis() > lastStatusSentTime +  int(Registers[0]) * 60000) {
     Serial.println("send status");
     lastStatusSentTime = millis();
     data[0] = 0x00; // reserved for futur usage
@@ -104,8 +105,8 @@ void loop() {
     data[5] = uint8_t(minuteSinceReboot);
     rfLink.SendData(Pdata, 5);
   }
-  if (millis() > lastIndicatorsSentTime + Registers[0] * 60000) {
-    Serial.println("send indicators");
+  if (millis() > lastIndicatorsSentTime + int(Registers[0]) * 60000) {
+    Serial.print("send indicators value:0x");
     lastIndicatorsSentTime = millis();
     data[0] = 0x00; // reserved for futur usage
     data[1] = indicatorsRequest;
@@ -113,11 +114,15 @@ void loop() {
     int value1 = analogRead(A0);
     data[3] = uint8_t(value1 / 256);
     data[4] = uint8_t(value1);
-    data[5] = updatableIndicatorsValues[0];
-    rfLink.SendData(Pdata, 5);
+    data[5] = highByte(updatableIndicatorsValues[0]);
+    data[6] = lowByte(updatableIndicatorsValues[0]);
+    Serial.print(data[5], HEX);
+    Serial.print("-");
+    Serial.println(data[6], HEX);
+    rfLink.SendData(Pdata, 6);
     value0++;
   }
-  if (millis() > lastToSheetSentTime + Registers[0] * 60000) {
+  if (millis() > lastToSheetSentTime + int(Registers[0]) * 60000) {
     Serial.println("send to sheet");
     lastToSheetSentTime = millis();
 #define nbValues 2
@@ -126,7 +131,7 @@ void loop() {
     values[1] = analogRead(A0);
     SendToGoogleSheet(nbValues, values);
   }
-  if (millis() > timeSendDatabase + Registers[0] * 60000) {
+  if (millis() > timeSendDatabase + int(Registers[0]) * 60000) {
     Serial.println("send to database");
     timeSendDatabase = millis();
 
@@ -136,7 +141,7 @@ void loop() {
     values[1] = analogRead(A0);
     SendToDatabase(nbValues, 0, values);
   }
-  if (millis() > timeSendRegister + Registers[0] * 60000) {
+  if (millis() > timeSendRegister + int(Registers[0]) * 60000) {
     Serial.println("send registers");
     timeSendRegister = millis();
     SendRegisters();
