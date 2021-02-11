@@ -17,7 +17,7 @@ uint8_t reveiverPin = 5;
 #define speedLink 2000
 #define nbRetry 4
 uint8_t stationAddress = 0x01;
-uint8_t gatewayAddress = 0xfe;
+uint8_t gatewayAddress = 0xfb;
 #define diagTimeUpToDate 2
 uint8_t diagByte = 0b000000100;
 byte data[20];

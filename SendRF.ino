@@ -94,8 +94,8 @@ byte * FormatIntBytes(uint8_t type, int value)
         {
           retByte[1] = 0x2b;
         }
-        retByte[2] = uint8_t((value & 0xff00) >> 8);
-        retByte[3] = uint8_t(value & 0x00ff );
+        retByte[2] = uint8_t((abs(value) & 0xff00) >> 8);
+        retByte[3] = uint8_t(abs(value) & 0x00ff );
         break;
       }
   }
