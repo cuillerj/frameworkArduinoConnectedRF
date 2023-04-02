@@ -5,9 +5,9 @@
 #define debugOn
 #define forceInitEeprom false
 #include <HomeAutomationBytesCommands.h> // commands specifications
-
 #include <EEPROM.h>
 #include <RF433Link.h>
+
 #define addrEepromStation 0   // address of station address
 #define addrEepromGateway 1  // address of gateway address
 #define addrEepromSenderPin 2
@@ -17,9 +17,10 @@ uint8_t reveiverPin = 5;
 #define speedLink 2000
 #define nbRetry 4
 uint8_t stationAddress = 0x01;
-uint8_t gatewayAddress = 0xfb;
+uint8_t gatewayAddress = 0xfe;
+#define diagJustReboot 0
 #define diagTimeUpToDate 2
-uint8_t diagByte = 0b000000100;
+uint8_t diagByte = 0b000000101;
 byte data[20];
 uint8_t *Pdata = &data[0]; // pointer to the data zone
 #define configPIN MOSI     // when high enter in configuration mode- MISO PIN can easely be set with a switch on ISCP connector
@@ -41,22 +42,44 @@ uint8_t Registers[registerSize] = {updateCycle, 0x00};
 unsigned int updatableIndicatorsIndex[updatableIndicatorsNumber] = {18};
 int updatableIndicatorsValues[updatableIndicatorsNumber] = {0};
 //boolean timeUpToDate = false;
+unsigned long alertSentSince = 0;
+unsigned int alertIdentifierLevel1 = 0;
+unsigned int alertIdentifierLevel2 = 0;
+unsigned int* alertId;
+boolean newOpenedAlert = false;
+boolean newClosedAlert = false;
+//boolean newTempOpenedAlert = false;
+//boolean newTempClosedAlert = false;
+#define defaultAlertInterval 5
+//unsigned int alertInterval=90;
+unsigned int countAlertSent = 0;
 #define TimeMode
 //#define RTCMode
 
 #ifdef RTCMode
 #include <RTClib.h>
 RTC_DS1307 RTC;
-#define TimeOn
+#define 
 #endif
 
 #ifdef TimeMode
 #include <TimeLib.h>
-#define TimeOn
+#define 
 #endif
-//#if defined TimeOn
+//#if defined 
 #define MonthList "JanFebMarAprMayJunJulAugSepOctNovDec"  // do not change can not be localized
 //#endif
+
+#include <CCS811.h>
+#include <MQ2.h>
+/*
+   IIC address default 0x5A, the address becomes 0x5B if the ADDR_SEL is soldered.
+*/
+CCS811 sensor;
+int pin = 0; //change this to the pin that you use
+float lpg = 0, co = 0, smoke = 0;
+
+MQ2 mq2(pin); //instance (true=with serial output enabled)
 
 void setup() {
   Serial.begin(38400);            // use serial for debug only with Arduino that has multiple serial interfaces
@@ -65,7 +88,7 @@ void setup() {
   Serial.print(Version);
   Serial.println(ver);
   pinMode(configPIN, INPUT_PULLUP);
-  if (!digitalRead(configPIN)||forceInitEeprom) {
+  if (!digitalRead(configPIN) || forceInitEeprom) {
     UpdateEeprom();
   }
   stationAddress = EEPROM.read(addrEepromStation);
@@ -93,7 +116,7 @@ void loop() {
   rfLink.RetrySend();
   ReceiveRF();
 
-  if (millis() > lastStatusSentTime +  int(Registers[0]) * 60000) {
+  if ((millis() > lastStatusSentTime +  int(Registers[0]) * 60000) || (millis() > lastStatusSentTime + 60000 && bitRead(diagByte, diagJustReboot))) {
     Serial.println("send status");
     lastStatusSentTime = millis();
     data[0] = 0x00; // reserved for futur usage
@@ -103,7 +126,8 @@ void loop() {
     int minuteSinceReboot = millis() / 60000;
     data[4] = uint8_t(minuteSinceReboot / 256);
     data[5] = uint8_t(minuteSinceReboot);
-    rfLink.SendData(Pdata, 5);
+    rfLink.SendData(Pdata, 5, diagByte);
+    AffTime();
   }
   if (millis() > lastIndicatorsSentTime + int(Registers[0]) * 60000) {
     Serial.print("send indicators value:0x");
@@ -111,7 +135,10 @@ void loop() {
     data[0] = 0x00; // reserved for futur usage
     data[1] = indicatorsRequest;
     data[2] = value0;
-    int value1 = analogRead(A0);
+    int value1 = analogRead(0);
+    Serial.print(" ");
+    Serial.print(value1);
+    Serial.print(" ");
     data[3] = uint8_t(value1 / 256);
     data[4] = uint8_t(value1);
     data[5] = highByte(updatableIndicatorsValues[0]);
@@ -121,6 +148,7 @@ void loop() {
     Serial.println(data[6], HEX);
     rfLink.SendData(Pdata, 6);
     value0++;
+    AffTime();
   }
   if (millis() > lastToSheetSentTime + int(Registers[0]) * 60000) {
     Serial.println("send to sheet");
@@ -128,7 +156,7 @@ void loop() {
 #define nbValues 2
     int values[nbValues];
     values[0] = value0;
-    values[1] = analogRead(A0);
+    values[1] = analogRead(0);
     SendToGoogleSheet(nbValues, values);
   }
   if (millis() > timeSendDatabase + int(Registers[0]) * 60000) {
@@ -138,7 +166,7 @@ void loop() {
 #define nbValues 2
     int values[nbValues];
     values[0] = value0;
-    values[1] = analogRead(A0);
+    values[1] = analogRead(0);
     SendToDatabase(nbValues, 0, values);
   }
   if (millis() > timeSendRegister + int(Registers[0]) * 60000) {
@@ -153,5 +181,10 @@ void loop() {
   }
   else if (!bitRead(diagByte, diagTimeUpToDate) && millis() > lastUpdateClock + 60 * 60000) {
     bitWrite(diagByte, diagTimeUpToDate, 1);
+  }
+  if (bitRead(diagByte, diagJustReboot)) {
+    if (millis() > int((Registers[0]) - 1) * 60000) {
+      bitWrite(diagByte, diagJustReboot, 0);
+    }
   }
 }
