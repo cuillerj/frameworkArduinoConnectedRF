@@ -6,7 +6,7 @@ void UpdateEeprom() {
   Serial.print("-");
   Serial.print(EEPROM.read(addrEepromSenderPin));
   Serial.print("-");
-  Serial.print(EEPROM.read(addrEepromReveiverPin));
+  Serial.print(EEPROM.read(addrEepromreceiverPin));
   Serial.print(" to: ");
   Serial.print(stationAddress);
   Serial.print("-");
@@ -14,7 +14,7 @@ void UpdateEeprom() {
   Serial.print(" senderPin:");
   Serial.print(senderPin);
   Serial.print(" receiverrPin:");
-  Serial.print(reveiverPin);
+  Serial.print(receiverPin);
   Serial.println(" in 30 secondes-");
   delay(30000);
   EEPROM.update(addrEepromStation, stationAddress);
@@ -23,7 +23,7 @@ void UpdateEeprom() {
   delay(100);
   EEPROM.update(addrEepromSenderPin, senderPin);
   delay(100);
-  EEPROM.update(addrEepromReveiverPin, reveiverPin);
+  EEPROM.update(addrEepromreceiverPin, receiverPin);
   Serial.println(" remove configPIN or set forceInitEeprom to false and restart");
-  delay(60000*60);
+  while(true);
 }

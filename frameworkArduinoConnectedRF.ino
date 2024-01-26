@@ -1,7 +1,7 @@
 
 
 #define Version "RF_frameworkV"
-#define ver 1 // version 
+#define ver 2 // version 
 #define debugOn
 #define forceInitEeprom false
 #include <HomeAutomationBytesCommands.h> // commands specifications
@@ -11,9 +11,10 @@
 #define addrEepromStation 0   // address of station address
 #define addrEepromGateway 1  // address of gateway address
 #define addrEepromSenderPin 2
-#define addrEepromReveiverPin 3
+#define addrEepromreceiverPin 3
 uint8_t senderPin = 3;
-uint8_t reveiverPin = 5;
+#define PPTPin 4
+uint8_t receiverPin = 5;
 #define speedLink 2000
 #define nbRetry 4
 uint8_t stationAddress = 0x01;
@@ -24,7 +25,7 @@ uint8_t diagByte = 0b000000101;
 byte data[20];
 uint8_t *Pdata = &data[0]; // pointer to the data zone
 #define configPIN MOSI     // when high enter in configuration mode- MISO PIN can easely be set with a switch on ISCP connector
-//RF433Link rfLink(stationAddress, gatewayAddress, senderPin, reveiverPin, speedLink,nbRetry);
+//RF433Link rfLink(stationAddress, gatewayAddress, senderPin, receiverPin, speedLink,nbRetry);
 RF433Link rfLink(speedLink);
 unsigned long lastStatusSentTime = 0;
 unsigned long lastIndicatorsSentTime = 10000;
@@ -59,14 +60,14 @@ unsigned int countAlertSent = 0;
 #ifdef RTCMode
 #include <RTClib.h>
 RTC_DS1307 RTC;
-#define 
+#define
 #endif
 
 #ifdef TimeMode
 #include <TimeLib.h>
-#define 
+
 #endif
-//#if defined 
+//#if defined
 #define MonthList "JanFebMarAprMayJunJulAugSepOctNovDec"  // do not change can not be localized
 //#endif
 
@@ -94,15 +95,19 @@ void setup() {
   stationAddress = EEPROM.read(addrEepromStation);
   gatewayAddress = EEPROM.read(addrEepromGateway);
   senderPin = EEPROM.read(addrEepromSenderPin);
-  reveiverPin = EEPROM.read(addrEepromReveiverPin);
+  receiverPin = EEPROM.read(addrEepromreceiverPin);
   Serial.print("gateway:");
   Serial.print(gatewayAddress, HEX);
   Serial.print(" RF_sub address:");
   Serial.print(stationAddress, HEX);
+//  stationAddress=0x0a;
   Serial.print(" station:");
   Serial.println(GetUnsignedValue(gatewayAddress, stationAddress));
-  rfLink.SetParameters(stationAddress, gatewayAddress, senderPin, reveiverPin, nbRetry);
+  #define receiveBroadcast true
+  rfLink.SetParameters(stationAddress, gatewayAddress, senderPin, receiverPin, PPTPin,  nbRetry, receiveBroadcast);
   rfLink.Start();
+  Serial.print("tx status:");
+  Serial.println(rfLink.Tx_active(), HEX);
   randomSeed(analogRead(0));
 }
 
@@ -110,13 +115,13 @@ void loop() {
   /*
 
   */
-  delay(100);
+  delay(1);
   //Pdata=&data[0];
 
   rfLink.RetrySend();
   ReceiveRF();
 
-  if ((millis() > lastStatusSentTime +  int(Registers[0]) * 60000) || (millis() > lastStatusSentTime + 60000 && bitRead(diagByte, diagJustReboot))) {
+  if ((millis() > lastStatusSentTime +  (unsigned long)(Registers[0]) * 60000) || (millis() > lastStatusSentTime + 60000 && bitRead(diagByte, diagJustReboot))) {
     Serial.println("send status");
     lastStatusSentTime = millis();
     data[0] = 0x00; // reserved for futur usage
@@ -129,7 +134,7 @@ void loop() {
     rfLink.SendData(Pdata, 5, diagByte);
     AffTime();
   }
-  if (millis() > lastIndicatorsSentTime + int(Registers[0]) * 60000) {
+  if (millis() > lastIndicatorsSentTime + (unsigned long)(Registers[0]) * 60000) {
     Serial.print("send indicators value:0x");
     lastIndicatorsSentTime = millis();
     data[0] = 0x00; // reserved for futur usage
@@ -150,7 +155,7 @@ void loop() {
     value0++;
     AffTime();
   }
-  if (millis() > lastToSheetSentTime + int(Registers[0]) * 60000) {
+  if (millis() > lastToSheetSentTime + (unsigned long)(Registers[0]) * 60000) {
     Serial.println("send to sheet");
     lastToSheetSentTime = millis();
 #define nbValues 2
@@ -159,7 +164,7 @@ void loop() {
     values[1] = analogRead(0);
     SendToGoogleSheet(nbValues, values);
   }
-  if (millis() > timeSendDatabase + int(Registers[0]) * 60000) {
+  if (millis() > timeSendDatabase + (unsigned long)(Registers[0]) * 60000) {
     Serial.println("send to database");
     timeSendDatabase = millis();
 
@@ -169,7 +174,7 @@ void loop() {
     values[1] = analogRead(0);
     SendToDatabase(nbValues, 0, values);
   }
-  if (millis() > timeSendRegister + int(Registers[0]) * 60000) {
+  if (millis() > timeSendRegister + (unsigned long)(Registers[0]) * 60000) {
     Serial.println("send registers");
     timeSendRegister = millis();
     SendRegisters();
@@ -183,7 +188,7 @@ void loop() {
     bitWrite(diagByte, diagTimeUpToDate, 1);
   }
   if (bitRead(diagByte, diagJustReboot)) {
-    if (millis() > int((Registers[0]) - 1) * 60000) {
+    if (millis() > 2 * 60000) {
       bitWrite(diagByte, diagJustReboot, 0);
     }
   }
